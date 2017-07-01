@@ -88,5 +88,15 @@ object Parser {
     parser: Strict[HListParser.Aux[L, D, N, V, M, H, R, P]]
    ): Aux[CC, P] =
     parser.value(defaults(), names(), valuesDesc(), helpMessages(), noHelp()).map(gen.from)
+
+  implicit val hnilParser: Aux[HNil, HNil] =
+    new Parser[HNil] {
+      type D = HNil
+      def init = HNil
+      def step(args: Seq[String], d: HNil) = Right(None)
+      def get(d: HNil) = Right(HNil)
+      def args = Vector.empty
+    }
+
 }
 

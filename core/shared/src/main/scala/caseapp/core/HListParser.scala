@@ -25,13 +25,7 @@ object HListParser {
 
   implicit val hnil: Aux[HNil, HNil, HNil, HNil, HNil, HNil, HNil, HNil] =
     instance { (_, _, _, _, _) =>
-      new Parser[HNil] {
-        type D = HNil
-        def init = HNil
-        def step(args: Seq[String], d: HNil) = Right(None)
-        def get(d: HNil) = Right(HNil)
-        def args = Vector.empty
-      }
+      Parser.hnilParser
     }
 
   implicit def hconsTaggedDefault[K <: Symbol, Tag, H, T <: HList, PT <: HList, DT <: HList, NT <: HList, VT <: HList, MT <: HList, HT <: HList, RT <: HList]
