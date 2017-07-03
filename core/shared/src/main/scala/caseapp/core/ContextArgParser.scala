@@ -1,54 +1,30 @@
 package caseapp.core
 
-import java.nio.file.{ Path, Paths }
-
-import caseapp.core.ArgParser.instance
-
-trait Context {
-  def str: String
-}
-
-trait ContextArgParser[T] {
+trait ContextArgParser[-Context, T] {
   def apply(implicit context: Context): ArgParser[T]
 }
 
 object ContextArgParser {
 
-  def apply[T](implicit parser: ContextArgParser[T]): ContextArgParser[T] = parser
+  def apply[Context, T](implicit parser: ContextArgParser[Context, T]): ContextArgParser[Context, T] = parser
 
-  implicit def fromArgParser[T](implicit argParser: ArgParser[T]): ContextArgParser[T] =
-    new ContextArgParser[T] {
+  implicit def fromArgParser[Context, T](implicit argParser: ArgParser[T]): ContextArgParser[Context, T] =
+    new ContextArgParser[Context, T] {
       override def apply(implicit context: Context): ArgParser[T] = argParser
     }
-}
 
-case class Foo(n: Int, s: String)
-
-object Foo {
-  val parser = implicitly[ContextParser[Foo]]
-}
-
-case class Pat(path: Path)
-
-object Pat {
-  implicit val parser: ContextArgParser[Pat] =
-    new ContextArgParser[Pat] {
-      override def apply(implicit context: Context): ArgParser[Pat] =
-        instance("pat") {
-          str ⇒
-            Right(
-              Pat(
-                Paths.get(
-                  context.str + "/" + str
-                )
-              )
-            )
-        }
+  def instance[Context, T](hintDescription: String)(f: String => Either[String, T]): ContextArgParser[Context, T] =
+    new ContextArgParser[Context, T] {
+      override def apply(implicit context: Context): ArgParser[T] =
+        ArgParser.instance(hintDescription)(f)
     }
-}
 
-case class Bar(n: Int, pat: Pat)
+  implicit def conextOptionArgParser[Context, T](implicit
+                                                 contextArgParser: ContextArgParser[Context, T]
+                                                ): ContextArgParser[Context, Option[T]] =
+    new ContextArgParser[Context, Option[T]] {
+      override def apply(implicit context: Context): ArgParser[Option[T]] =
+        ArgParser.option(contextArgParser.apply)
+    }
 
-object Bar {
-  val parser = implicitly[ContextParser[Bar]]
 }

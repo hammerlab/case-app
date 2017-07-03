@@ -5,48 +5,48 @@ import caseapp.{ @@, HelpMessage, Hidden, Name, ValueDescription }
 import shapeless.labelled.{ FieldType, field }
 import shapeless.{ ::, HList, HNil, Strict, Witness, the }
 
-trait ContextHListParser[L <: HList, D <: HList, -N <: HList, -V <: HList, -M <: HList, -H <: HList, R <: HList] {
+trait ContextHListParser[Context, L <: HList, D <: HList, -N <: HList, -V <: HList, -M <: HList, -H <: HList, R <: HList] {
   type P <: HList
-  def apply(default: D, names: N, valueDescriptions: V, helpMessages: M, noHelp: H): ContextParser.Aux[L, P]
+  def apply(default: D, names: N, valueDescriptions: V, helpMessages: M, noHelp: H): ContextParser.Aux[Context, L, P]
 }
 
 object ContextHListParser {
-  def apply[L <: HList, D <: HList, N <: HList, V <: HList, M <: HList, H <: HList, R <: HList](implicit args: ContextHListParser[L, D, N, V, M, H, R]): Aux[L, D, N, V, M, H, R, args.P] = args
+  def apply[Context, L <: HList, D <: HList, N <: HList, V <: HList, M <: HList, H <: HList, R <: HList](implicit args: ContextHListParser[Context, L, D, N, V, M, H, R]): Aux[Context, L, D, N, V, M, H, R, args.P] = args
 
-  type Aux[L <: HList, D <: HList, N <: HList, V <: HList, M <: HList, H <: HList, R <: HList, P0 <: HList] =
-    ContextHListParser[L, D, N, V, M, H, R] { type P = P0 }
+  type Aux[Context, L <: HList, D <: HList, N <: HList, V <: HList, M <: HList, H <: HList, R <: HList, P0 <: HList] =
+    ContextHListParser[Context, L, D, N, V, M, H, R] { type P = P0 }
 
-  def instance[L <: HList, D <: HList, N <: HList, V <: HList, M <: HList, H <: HList, R <: HList, P0 <: HList](p: (D, N, V, M, H) => ContextParser.Aux[L, P0]): Aux[L, D, N, V, M, H, R, P0] =
-    new ContextHListParser[L, D, N, V, M, H, R] {
+  def instance[Context, L <: HList, D <: HList, N <: HList, V <: HList, M <: HList, H <: HList, R <: HList, P0 <: HList](p: (D, N, V, M, H) => ContextParser.Aux[Context, L, P0]): Aux[Context, L, D, N, V, M, H, R, P0] =
+    new ContextHListParser[Context, L, D, N, V, M, H, R] {
       type P = P0
       def apply(default: D, names: N, valueDescriptions: V, helpMessages: M, noHelp: H) = p(default, names, valueDescriptions, helpMessages, noHelp)
     }
 
-  implicit val hnil: Aux[HNil, HNil, HNil, HNil, HNil, HNil, HNil, HNil] =
+  implicit def hnil[Context]: Aux[Context, HNil, HNil, HNil, HNil, HNil, HNil, HNil, HNil] =
     instance { (_, _, _, _, _) =>
-      new ContextParser[HNil] {
+      new ContextParser[Context, HNil] {
         type D = HNil
         override def apply(implicit context: Context): Parser.Aux[HNil, HNil] =
           the[Parser.Aux[HNil, HNil]]
       }
     }
 
-  implicit def hconsTaggedDefault[K <: Symbol, Tag, H, T <: HList, PT <: HList, DT <: HList, NT <: HList, VT <: HList, MT <: HList, HT <: HList, RT <: HList]
+  implicit def hconsTaggedDefault[Context, K <: Symbol, Tag, H, T <: HList, PT <: HList, DT <: HList, NT <: HList, VT <: HList, MT <: HList, HT <: HList, RT <: HList]
   (implicit
    name: Witness.Aux[K],
-   argParser: Strict[ContextArgParser[H @@ Tag]],
+   argParser: Strict[ContextArgParser[Context, H @@ Tag]],
    headDefault: Implicit[Option[Default[H @@ Tag]]],
-   tail: Strict[Aux[T, DT, NT, VT, MT, HT, RT, PT]]
-  ): Aux[FieldType[K, H @@ Tag] :: T, Option[H @@ Tag] :: DT, List[Name] :: NT, Option[ValueDescription] :: VT, Option[HelpMessage] :: MT, Option[Hidden] :: HT, None.type :: RT, Option[H @@ Tag] :: PT] =
-    hconsDefault[K, H @@ Tag, T, PT, DT, NT, VT, MT, HT, RT]
+   tail: Strict[Aux[Context, T, DT, NT, VT, MT, HT, RT, PT]]
+  ): Aux[Context, FieldType[K, H @@ Tag] :: T, Option[H @@ Tag] :: DT, List[Name] :: NT, Option[ValueDescription] :: VT, Option[HelpMessage] :: MT, Option[Hidden] :: HT, None.type :: RT, Option[H @@ Tag] :: PT] =
+    hconsDefault[Context, K, H @@ Tag, T, PT, DT, NT, VT, MT, HT, RT]
 
-  implicit def hconsDefault[K <: Symbol, H, T <: HList, PT <: HList, DT <: HList, NT <: HList, VT <: HList, MT <: HList, HT <: HList, RT <: HList]
+  implicit def hconsDefault[Context, K <: Symbol, H, T <: HList, PT <: HList, DT <: HList, NT <: HList, VT <: HList, MT <: HList, HT <: HList, RT <: HList]
   (implicit
    name: Witness.Aux[K],
-   contextArgParser: Strict[ContextArgParser[H]],
+   contextArgParser: Strict[ContextArgParser[Context, H]],
    headDefault: Implicit[Option[Default[H]]],
-   tail: Strict[Aux[T, DT, NT, VT, MT, HT, RT, PT]]
-  ): Aux[FieldType[K, H] :: T, Option[H] :: DT, List[Name] :: NT, Option[ValueDescription] :: VT, Option[HelpMessage] :: MT, Option[Hidden] :: HT, None.type :: RT, Option[H] :: PT] =
+   tail: Strict[Aux[Context, T, DT, NT, VT, MT, HT, RT, PT]]
+  ): Aux[Context, FieldType[K, H] :: T, Option[H] :: DT, List[Name] :: NT, Option[ValueDescription] :: VT, Option[HelpMessage] :: MT, Option[Hidden] :: HT, None.type :: RT, Option[H] :: PT] =
     instance { (default0, names, valueDescriptions, helpMessages, noHelp) =>
 
       val tailContextParser = tail.value(default0.tail, names.tail, valueDescriptions.tail, helpMessages.tail, noHelp.tail)
@@ -56,7 +56,7 @@ object ContextHListParser {
       val headDefault0 = default0.head
       val defaultValuePreset = headDefault0.orElse(headDefault.value.map(_()))
 
-      new ContextParser[FieldType[K, H] :: T] {
+      new ContextParser[Context, FieldType[K, H] :: T] {
         type D = Option[H] :: PT
         override def apply(implicit context: Context): Parser.Aux[FieldType[K, H] :: T, D] = {
 
